@@ -144,3 +144,28 @@ async def calculate_total_revenue(property_id: str, tenant_id: str) -> Dict[str,
             "currency": "USD",
             "count": mock_property_data['count']
         }
+
+
+async def get_tenant_properties(tenant_id: str) -> List[Dict[str, str]]:
+    """Return only properties owned by the authenticated tenant."""
+    from app.core.database_pool import db_pool
+    from sqlalchemy import text
+
+    await db_pool.initialize()
+    if not db_pool.session_factory:
+        raise RuntimeError("Database pool not available")
+
+    async with db_pool.get_session() as session:
+        result = await session.execute(
+            text("""
+                SELECT id, name
+                FROM properties
+                WHERE tenant_id = :tenant_id
+                ORDER BY name
+            """),
+            {"tenant_id": tenant_id},
+        )
+        return [
+            {"id": row.id, "name": row.name}
+            for row in result.fetchall()
+        ]
